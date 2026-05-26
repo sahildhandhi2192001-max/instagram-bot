@@ -12,6 +12,10 @@ from dotenv import load_dotenv
 import requests
 import os
 
+# CREATE DOWNLOADS FOLDER
+if not os.path.exists("downloads"):
+    os.makedirs("downloads")
+
 # =====================================
 # LOAD ENV VARIABLES
 # =====================================
@@ -27,7 +31,10 @@ TOKEN = os.getenv("BOT_TOKEN")
 # =====================================
 cl = Client()
 
-cl.load_settings("session.json")
+cl.login(
+    os.getenv("IG_USERNAME"),
+    os.getenv("IG_PASSWORD")
+)
 
 # =====================================
 # MAIN FUNCTION
@@ -69,9 +76,11 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     folder="downloads"
                 )
 
-                await update.message.reply_video(
-                    video=open(video_path, "rb")
-                )
+                with open(video_path, "rb") as video:
+
+                    await update.message.reply_video(
+                        video=video
+                    )
 
             # =================================
             # IMAGE / CAROUSEL POST
@@ -97,9 +106,11 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             with open(filename, "wb") as f:
                                 f.write(img.content)
 
-                            await update.message.reply_photo(
-                                photo=open(filename, "rb")
-                            )
+                            with open(filename, "rb") as photo:
+
+                                await update.message.reply_photo(
+                                    photo=photo
+                                )
 
                 # SINGLE IMAGE POST
                 else:
@@ -109,9 +120,11 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         folder="downloads"
                     )
 
-                    await update.message.reply_photo(
-                        photo=open(photo_path, "rb")
-                    )
+                    with open(photo_path, "rb") as photo:
+
+                        await update.message.reply_photo(
+                            photo=photo
+                        )
 
             await msg.delete()
 
@@ -159,9 +172,11 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             with open("hd_dp.jpg", "wb") as f:
                 f.write(img.content)
 
-            await update.message.reply_photo(
-                photo=open("hd_dp.jpg", "rb")
-            )
+            with open("hd_dp.jpg", "rb") as photo:
+
+                await update.message.reply_photo(
+                    photo=photo
+                )
 
             await msg.delete()
 
@@ -197,9 +212,11 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             with open("hd_dp.jpg", "wb") as f:
                 f.write(img.content)
 
-            await update.message.reply_photo(
-                photo=open("hd_dp.jpg", "rb")
-            )
+            with open("hd_dp.jpg", "rb") as photo:
+
+                await update.message.reply_photo(
+                    photo=photo
+                )
 
             await msg.delete()
 
@@ -208,7 +225,6 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 "Send valid Instagram link or username."
             )
-
 
 # =====================================
 # CREATE BOT
