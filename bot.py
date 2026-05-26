@@ -31,10 +31,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 # =====================================
 cl = Client()
 
-cl.login(
-    os.getenv("IG_USERNAME"),
-    os.getenv("IG_PASSWORD")
-)
+cl.load_settings("session.json")
 
 # =====================================
 # MAIN FUNCTION
