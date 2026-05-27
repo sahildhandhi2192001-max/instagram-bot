@@ -6,246 +6,164 @@ from telegram.ext import (
     ContextTypes
 )
 
-from instagrapi import Client
-from dotenv import load_dotenv
-
-import requests
+import yt_dlp
 import os
+import glob
+import traceback
+
+TOKEN = "8475164533:AAEf2A6J_uueZ5QCPOaK9_joq0T4d1dlt-g"
 
 # CREATE DOWNLOADS FOLDER
 if not os.path.exists("downloads"):
     os.makedirs("downloads")
 
-# =====================================
-# LOAD ENV VARIABLES
-# =====================================
-load_dotenv()
-
-# =====================================
-# TELEGRAM BOT TOKEN
-# =====================================
-TOKEN = os.getenv("BOT_TOKEN")
-
-# =====================================
-# INSTAGRAM LOGIN
-# =====================================
-cl = Client()
-
-cl.load_settings("session.json")
-
-# =====================================
 # MAIN FUNCTION
-# =====================================
+progress_message = None
+
+def progress_hook(d):
+
+    if d['status'] == 'downloading':
+
+        percent = d.get('_percent_str', '0%')
+
+        print(f"Downloading {percent}")
+
+    elif d['status'] == 'finished':
+
+        print("Download finished")
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    text = update.message.text.strip()
+    try:
 
-    # REMOVE TRACKING PARAMETERS
-    if "?" in text:
-        text = text.split("?")[0]
+        text = update.message.text.strip()
 
-    # =====================================
-    # POST / REEL DOWNLOAD
-    # =====================================
-    if (
-        "instagram.com/p/" in text
-        or
-        "instagram.com/reel/" in text
-    ):
+        print("MESSAGE RECEIVED:")
+        print(text)
 
-        msg = await update.message.reply_text(
-            "Downloading media..."
+        # REMOVE EXTRA PARAMETERS
+        if "?" in text:
+            text = text.split("?")[0]
+
+        await update.message.reply_text(
+            "Downloading..."
         )
 
-        try:
+        # DELETE OLD FILES
+        old_files = glob.glob("downloads/*")
 
-            media_pk = cl.media_pk_from_url(text)
+        for file in old_files:
+            os.remove(file)
 
-            media = cl.media_info(media_pk)
+        # yt-dlp settings
+        ydl_opts = {
+            "progress_hooks": [progress_hook],
+            "outtmpl": "downloads/%(id)s.%(ext)s",
+            "quiet": False,
+            "noplaylist": False,
+            "extract_flat": False,
+        }
 
-            # =================================
-            # VIDEO / REEL
-            # =================================
-            if media.media_type == 2:
+        # DOWNLOAD
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
 
-                video_path = cl.video_download(
-                    media_pk,
-                    folder="downloads"
+            try:
+
+                info = ydl.extract_info(
+                    text,
+                    download=True
                 )
 
-                with open(video_path, "rb") as video:
+                print(info)
+
+            except Exception as e:
+
+                print("DOWNLOAD ERROR:")
+                print(e)
+
+                await update.message.reply_text(
+                    "Photo posts are currently unsupported."
+                )
+
+                return
+
+        # FIND FILES
+        files = glob.glob("downloads/*")
+
+        print("DOWNLOADED FILES:")
+        print(files)
+
+        # NO FILES FOUND
+        if not files:
+
+            await update.message.reply_text(
+                "Could not download media."
+            )
+
+            return
+
+        # SEND FILES
+        for file_path in files:
+
+            print("SENDING:")
+            print(file_path)
+
+            # VIDEO
+            if file_path.lower().endswith(
+                (
+                    ".mp4",
+                    ".mov",
+                    ".mkv"
+                )
+            ):
+
+                with open(file_path, "rb") as video:
 
                     await update.message.reply_video(
                         video=video
                     )
 
-            # =================================
-            # IMAGE / CAROUSEL POST
-            # =================================
-            else:
+            # IMAGE
+            elif file_path.lower().endswith(
+                (
+                    ".jpg",
+                    ".jpeg",
+                    ".png",
+                    ".webp",
+                    ".bmp"
+                )
+            ):
 
-                # CAROUSEL POST
-                if media.media_type == 8:
+                with open(file_path, "rb") as photo:
 
-                    resources = media.resources
-
-                    for item in resources:
-
-                        # IMAGE ONLY
-                        if item.media_type == 1:
-
-                            image_url = item.thumbnail_url
-
-                            img = requests.get(image_url)
-
-                            filename = "carousel.jpg"
-
-                            with open(filename, "wb") as f:
-                                f.write(img.content)
-
-                            with open(filename, "rb") as photo:
-
-                                await update.message.reply_photo(
-                                    photo=photo
-                                )
-
-                # SINGLE IMAGE POST
-                else:
-
-                    photo_path = cl.photo_download(
-                        media_pk,
-                        folder="downloads"
+                    await update.message.reply_photo(
+                        photo=photo
                     )
 
-                    with open(photo_path, "rb") as photo:
-
-                        await update.message.reply_photo(
-                            photo=photo
-                        )
-
-            await msg.delete()
-
-        except Exception as e:
-
-            await update.message.reply_text(
-                f"Error: {e}"
-            )
-
-    # =====================================
-    # PROFILE LINK
-    # =====================================
-    elif "instagram.com/" in text:
-
-        msg = await update.message.reply_text(
-            "Downloading HD profile picture..."
+        await update.message.reply_text(
+            "Done."
         )
 
-        try:
+    except Exception as e:
 
-            username = text.replace(
-                "https://www.instagram.com/",
-                ""
-            ).replace("/", "").strip()
+        print("ERROR:")
+        print(e)
 
-            user_id = cl.user_id_from_username(
-                username
-            )
+        traceback.print_exc()
 
-            user_info = cl.user_info(user_id)
-
-            dp_url = str(
-                user_info.profile_pic_url_hd
-            )
-
-            headers = {
-                "User-Agent": "Mozilla/5.0"
-            }
-
-            img = requests.get(
-                dp_url,
-                headers=headers
-            )
-
-            with open("hd_dp.jpg", "wb") as f:
-                f.write(img.content)
-
-            with open("hd_dp.jpg", "rb") as photo:
-
-                await update.message.reply_photo(
-                    photo=photo
-                )
-
-            await msg.delete()
-
-        except Exception as e:
-
-            await update.message.reply_text(
-                f"Error: {e}"
-            )
-
-    # =====================================
-    # USERNAME ONLY
-    # =====================================
-    else:
-
-        msg = await update.message.reply_text(
-            "Downloading HD profile picture..."
+        await update.message.reply_text(
+            f"ERROR:\n{e}"
         )
 
-        try:
-
-            user_id = cl.user_id_from_username(
-                text
-            )
-
-            user_info = cl.user_info(user_id)
-
-            dp_url = str(
-                user_info.profile_pic_url_hd
-            )
-
-            img = requests.get(dp_url)
-
-            with open("hd_dp.jpg", "wb") as f:
-                f.write(img.content)
-
-            with open("hd_dp.jpg", "rb") as photo:
-
-                await update.message.reply_photo(
-                    photo=photo
-                )
-
-            await msg.delete()
-
-        except Exception:
-
-            await update.message.reply_text(
-                "Send valid Instagram link or username."
-            )
-
-# =====================================
 # CREATE BOT
-# =====================================
-app = (
-    ApplicationBuilder()
-    .token(TOKEN)
-    .read_timeout(120)
-    .write_timeout(120)
-    .connect_timeout(120)
-    .pool_timeout(120)
-    .build()
-)
+app = ApplicationBuilder().token(TOKEN).build()
 
-# =====================================
 # HANDLER
-# =====================================
 app.add_handler(
     MessageHandler(filters.TEXT, reply)
 )
 
-print("Instagram Bot Running...")
+print("Bot Running...")
+print("Waiting for messages...")
 
-# =====================================
 # START BOT
-# =====================================
 app.run_polling()
