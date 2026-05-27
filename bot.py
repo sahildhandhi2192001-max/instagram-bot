@@ -11,7 +11,7 @@ import os
 import glob
 import traceback
 
-TOKEN = "YOUR_BOT_TOKEN"
+TOKEN = "8475164533:AAEf2A6J_uueZ5QCPOaK9_joq0T4d1dlt-g"
 
 # CREATE DOWNLOADS FOLDER
 if not os.path.exists("downloads"):
