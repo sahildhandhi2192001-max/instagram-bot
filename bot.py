@@ -11,15 +11,13 @@ import os
 import glob
 import traceback
 
-TOKEN = "8475164533:AAEf2A6J_uueZ5QCPOaK9_joq0T4d1dlt-g"
+TOKEN = "YOUR_BOT_TOKEN"
 
 # CREATE DOWNLOADS FOLDER
 if not os.path.exists("downloads"):
     os.makedirs("downloads")
 
-# MAIN FUNCTION
-progress_message = None
-
+# PROGRESS HOOK
 def progress_hook(d):
 
     if d['status'] == 'downloading':
@@ -31,6 +29,9 @@ def progress_hook(d):
     elif d['status'] == 'finished':
 
         print("Download finished")
+
+
+# MAIN FUNCTION
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
@@ -119,7 +120,11 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 with open(file_path, "rb") as video:
 
                     await update.message.reply_video(
-                        video=video
+                        video=video,
+                        read_timeout=120,
+                        write_timeout=120,
+                        connect_timeout=120,
+                        pool_timeout=120
                     )
 
             # IMAGE
@@ -136,7 +141,11 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 with open(file_path, "rb") as photo:
 
                     await update.message.reply_photo(
-                        photo=photo
+                        photo=photo,
+                        read_timeout=120,
+                        write_timeout=120,
+                        connect_timeout=120,
+                        pool_timeout=120
                     )
 
         await update.message.reply_text(
@@ -155,7 +164,15 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 # CREATE BOT
-app = ApplicationBuilder().token(TOKEN).build()
+app = (
+    ApplicationBuilder()
+    .token(TOKEN)
+    .read_timeout(120)
+    .write_timeout(120)
+    .connect_timeout(120)
+    .pool_timeout(120)
+    .build()
+)
 
 # HANDLER
 app.add_handler(
